@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<system xmlns="http://www.eiffel.com/developers/xml/configuration-1-10-0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.eiffel.com/developers/xml/configuration-1-10-0 http://www.eiffel.com/developers/xml/configuration-1-10-0.xsd" name="large_raw_file" uuid="779C0DF3-8552-47D3-A1DB-8011453F0D2B" library_target="large_raw_file">
+	<target name="large_raw_file">
+		<root all_classes="true"/>
+		<file_rule>
+			<exclude>/.git$</exclude>
+			<exclude>/EIFGENs$</exclude>
+			<exclude>/.svn$</exclude>
+		</file_rule>
+		<option warning="true" full_class_checking="true" is_attached_by_default="false" void_safety="none" syntax="standard">
+		</option>
+		<library name="base" location="$ISE_LIBRARY\library\base\base.ecf"/>
+		<cluster name="spec" location=".\src\spec\windows\">
+			<condition>
+				<platform value="windows"/>
+			</condition>
+		</cluster>
+		<cluster name="src" location=".\src\">
+			<cluster name="unix" location="$|spec\unix\">
+				<condition>
+					<platform value="unix"/>
+				</condition>
+			</cluster>
+			<cluster name="windows" location="$|spec\unix\">
+				<condition>
+					<platform value="windows"/>
+				</condition>
+			</cluster>
+		</cluster>
+	</target>
+</system>
