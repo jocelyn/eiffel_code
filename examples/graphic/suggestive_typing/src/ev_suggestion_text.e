@@ -119,7 +119,17 @@ feature{NONE} -- Initialization
 			end
 		end
 
+	set_displayed_text (a_text: READABLE_STRING_GENERAL)
+		do
+		end
+
 feature {NONE} -- Implementation
+
+	select_all_text
+			-- Select all text.
+		do
+			select_all
+		end
 
 	move_caret_to (a_pos: INTEGER)
 			-- <Precursor>
@@ -239,7 +249,8 @@ feature {NONE} -- Implementation
 			end
 		end
 
-	insert_suggestion (a_text: STRING_32; a_selected_item: like last_suggestion)
+
+	insert_suggestion (a_selected_item: attached like last_suggestion)
 			-- Insert `a_text' in Current if valid, move caret to the end and update last_suggestion.
 			-- (from EV_ABSTRACT_SUGGESTION_FIELD)
 			-- (export status {EV_SUGGESTION_WINDOW})
@@ -249,7 +260,8 @@ feature {NONE} -- Implementation
 			l_old_caret_position: INTEGER
 		do
 			last_suggestion := a_selected_item
-			if not a_text.is_empty and not a_text.has_code (('%R').natural_32_code) then
+			l_text := a_selected_item.displayed_text
+			if not l_text.is_empty and not l_text.has_code (('%R').natural_32_code) then
 				l_old_caret_position := caret_position
 --				i := l_old_caret_position
 				i := word_begin_position (text, l_old_caret_position)
@@ -260,10 +272,10 @@ feature {NONE} -- Implementation
 						set_caret_position (text_length.min (i))
 					end
 					i := caret_position
-					insert_text (a_text)
-					set_caret_position (i + a_text.count)
+					insert_text (l_text)
+					set_caret_position (i + l_text.count)
 				else
-					set_text (a_text)
+					set_text (l_text)
 					move_caret_to_end
 				end
 			end

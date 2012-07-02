@@ -11,7 +11,7 @@
 		</option>
 		<setting name="concurrency" value="thread"/>
 		<library name="base" location="$ISE_LIBRARY\library\base\base-safe.ecf"/>
-		<library name="fmwk_vision2" location="$EIFFEL_SRC\framework\vision2\vision2-safe.ecf"/>
+		<library name="fmwk_vision2" location="$EIFFEL_SRC\framework\vision2\vision2-safe.ecf" readonly="false"/>
 		<library name="vision2" location="$ISE_LIBRARY\library\vision2\vision2-safe.ecf"/>
 		<cluster name="src" location=".\src\" recursive="true"/>
 	</target>

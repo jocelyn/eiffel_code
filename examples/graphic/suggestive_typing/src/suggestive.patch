@@ -1,0 +1,137 @@
+Index: ev_abstract_suggestion_field.e
+===================================================================
+--- ev_abstract_suggestion_field.e	(revision 89065)
++++ ev_abstract_suggestion_field.e	(working copy)
+@@ -193,6 +193,13 @@
+ 
+ feature -- Text operation
+ 
++	select_all_text
++			-- Select all text.
++		require
++			not_destroyed: not is_destroyed
++		deferred
++		end
++
+ 	delete_word_before
+ 			-- Delete one word before the `caret_position'.
+ 		require
+@@ -216,7 +223,7 @@
+ 		end
+ 
+ 	move_caret_to_end
+-			-- Move caret at the end.
++			-- Move caret at the end of displayed text.
+ 		require
+ 			not_destroyed: not is_destroyed
+ 		deferred
+@@ -381,13 +388,13 @@
+ 						provide_suggestion
+ 					end
+ 				end
+-				if a_key.is_printable then
+-					reset_suggestion_timeout
+-				elseif is_ctrl_pressed then
++				if is_ctrl_pressed then
+ 						-- If Backspace or Delete is pressed we perform
+ 						-- whatever the implementation decided. By default it is to
+ 						-- remove the word before or after `caret_position'.
+-					handle_deletion_keys (a_key)
++					handle_keys (a_key)
++				elseif a_key.is_printable then
++					reset_suggestion_timeout
+ 				end
+ 			elseif choices /= Void and then not choices.is_destroyed and then choices.is_displayed then
+ 				inspect
+@@ -487,19 +494,32 @@
+ 			end
+ 		end
+ 
+-	handle_deletion_keys (a_key: EV_KEY)
++	handle_keys (a_key: EV_KEY)
+  			-- Process the push on Ctrl + an extended key.
+  		require
+ 			not_destroyed: not is_destroyed
+ 		do
+  			inspect
+  				a_key.code
++			when {EV_KEY_CONSTANTS}.key_a then
++				select_all_text
++			else
++				handle_deletion_keys (a_key)
++			end
++ 		end
++
++ 	handle_deletion_keys (a_key: EV_KEY)
++ 			-- Process the push on Ctrl + an extended key.
++ 		require
++			not_destroyed: not is_destroyed
++		do
++ 			inspect
++ 				a_key.code
+  			when {EV_KEY_CONSTANTS}.key_back_space then
+ 				delete_word_before
+ 
+ 			when {EV_KEY_CONSTANTS}.key_delete then
+ 				delete_word_after
+-
+ 			else
+ 			end
+  		end
+Index: ev_suggestion_window.e
+===================================================================
+--- ev_suggestion_window.e	(revision 89065)
++++ ev_suggestion_window.e	(working copy)
+@@ -292,6 +292,7 @@
+ 				end
+ 				i := ix + l_offset
+ 				from
++					l_loop_end := l_grid.visible_row_count = 0
+ 				until
+ 					l_loop_end
+ 				loop
+Index: ev_suggestion_text_field.e
+===================================================================
+--- ev_suggestion_text_field.e	(revision 89065)
++++ ev_suggestion_text_field.e	(working copy)
+@@ -18,9 +18,6 @@
+ 		end
+ 
+ 	EV_ABSTRACT_SUGGESTION_FIELD
+-		rename
+-			displayed_text as text,
+-			set_displayed_text as set_text
+ 		redefine
+ 			create_interface_objects
+ 		end
+@@ -95,8 +92,30 @@
+ 			default_handler_preserved: default_key_processing_handler = new_default_key_processing_handler
+ 		end
+ 
++feature -- Text access
++
++	displayed_text: STRING_32
++			-- <Precursor>
++		do
++			Result := text
++		end
++
++feature -- Text change
++
++	set_displayed_text (a_text: READABLE_STRING_GENERAL)
++			-- <Precursor>
++		do
++			set_text (a_text)
++		end
++
+ feature {NONE} -- Implementation
+ 
++	select_all_text
++			-- <Precursor>
++		do
++			select_all
++		end
++
+ 	move_caret_to_end
+ 			-- <Precursor>
+ 		do
