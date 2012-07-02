@@ -126,7 +126,15 @@ Index: framework/vision2/suggestive_typing/ev_suggestion_window.e
  				until
  					l_loop_end
  				loop
-@@ -464,11 +465,26 @@
+@@ -449,6 +450,7 @@
+ 							end
+ 						else
+ 							if settings.is_list_filtered_when_typing then
++								l_row.disable_select
+ 								l_row.hide
+ 							end
+ 						end
+@@ -464,11 +466,26 @@
  		local
  			l_grid: like grid
  			l_rows: ARRAYED_LIST [EV_GRID_ROW]
