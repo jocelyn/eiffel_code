@@ -45,38 +45,46 @@ feature -- Text operation
 			l_text: like text
 			p: like caret_position
 			p1,p2: INTEGER
+			len: INTEGER
 		do
 			l_text := text
-			p := caret_position
-			p1 := p
-			if p <= 1 then
+			if l_text.is_empty then
 				p1 := 1
-			elseif is_text_limit (l_text [p1 - 1]) then
+				p2 := 0
 			else
-				from
-					p1 := p1 - 1
-				until
-					p1 < 2 or else is_text_limit (l_text [p1 - 1])
-				loop
-					p1 := p1 - 1
+				p := caret_position
+				len := l_text.count
+				p1 := p
+				if p <= 1 then
+					p1 := 1
+				elseif is_text_limit (l_text [p1 - 1]) then
+				else
+					from
+						p1 := p1 - 1
+					until
+						p1 < 2 or else is_text_limit (l_text [p1 - 1])
+					loop
+						p1 := p1 - 1
+					end
+				end
+
+				p2 := p
+				if p2 >= len then
+					p2 := len
+				elseif is_text_limit (l_text [p2]) then
+					p2 := (p2 - 1).max (p1)
+				else
+					from
+						p2 := p2 + 1
+					until
+						p2 > len or else is_text_limit (l_text[p2])
+					loop
+						p2 := p2 + 1
+					end
+					p2 := p2 - 1
 				end
 			end
 
-			p2 := p
-			if p2 >= l_text.count then
-				p2 := l_text.count
-			elseif is_text_limit (l_text [p2]) then
-				p2 := (p2 - 1).max (p1)
-			else
-				from
-					p2 := p2 + 1
-				until
-					p2 > l_text.count or else is_text_limit (l_text[p2])
-				loop
-					p2 := p2 + 1
-				end
-				p2 := p2 - 1
-			end
 			Result := [p1, p2]
 		end
 
@@ -88,6 +96,8 @@ feature -- Text operation
 			tu := displayed_text_range
 			Result := text.substring (tu.left, tu.right)
 		end
+
+feature -- Text change
 
 	set_displayed_text (a_text: READABLE_STRING_GENERAL)
 			-- Set `a_text' to `displayed_text'.

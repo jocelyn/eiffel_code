@@ -12,14 +12,14 @@ inherit
 	EV_TEXT
 		redefine
 			create_interface_objects,
-			initialize
+			initialize,
+			set_default_key_processing_handler,
+			remove_default_key_processing_handler
 		end
 
 	EV_ABSTRACT_SUGGESTION_FIELD
 		redefine
-			create_interface_objects,
-			insert_suggestion,
-			displayed_text
+			create_interface_objects
 		end
 
 create
@@ -27,6 +27,8 @@ create
 	make_with_settings
 
 feature{NONE} -- Initialization
+
+feature {NONE} -- Initialization
 
 	make (a_provider: like suggestion_provider)
 			-- Initialize current using suggestion provider `a_provider'.
@@ -66,99 +68,169 @@ feature{NONE} -- Initialization
 			initialize_suggestion_field
 		end
 
-	expression_text: STRING_32
+feature -- Status setting
+
+	set_default_key_processing_handler (a_handler: like default_key_processing_handler)
+			-- Set `default_key_processing_handler' with `new_default_key_processing_handler'.
+			-- Set `old_default_key_processing_handler' with `a_handler' if different from
+			-- `new_default_key_processing_handler'.
+		do
+			if a_handler /= new_default_key_processing_handler then
+				old_default_key_processing_handler := a_handler
+			end
+			if default_key_processing_handler /= new_default_key_processing_handler then
+				Precursor (new_default_key_processing_handler)
+			end
+		ensure then
+			handler_set: default_key_processing_handler = new_default_key_processing_handler
+			a_handler_preserved: a_handler /= new_default_key_processing_handler implies old_default_key_processing_handler = a_handler
+		end
+
+	remove_default_key_processing_handler
+			-- Ensure `old_default_key_processing_handler' is Void while preserving our own handler.
+		do
+			old_default_key_processing_handler := Void
+		ensure then
+			default_handler_preserved: default_key_processing_handler = new_default_key_processing_handler
+		end
+
+feature -- Text limit
+
+--	is_text_limit_agent: detachable FUNCTION [ANY, TUPLE [CHARACTER_32], BOOLEAN]
+
+--	set_is_text_limit_agent (agt: like is_text_limit_agent)
+--		do
+--			is_text_limit_agent := agt
+--		end
+
+	is_text_limit (c: CHARACTER_32): BOOLEAN
+		do
+--			if attached is_text_limit_agent as agt then
+--				Result := agt.item ([c])
+--			else
+				Result := c.is_space
+--			end
+		end
+
+feature -- Text access
+--	word_begin_position (a_text: like text; a_caret_position: INTEGER): INTEGER
+--		local
+--			l_text: STRING_32
+--			i: INTEGER
+--		do
+--			l_text := a_text
+--				-- Translate the `a_caret_position' as an index in the string
+--			i := a_caret_position - 1
+--			if not l_text.is_empty and l_text.valid_index (i) then
+--					-- First we skipp all spaces at the left of the `caret_position'.
+--				if l_text.item (i).is_space then
+--					Result := i + 1
+--				else
+--					from until i = 0 or else not l_text.item (i).is_space loop
+--						i := i - 1
+--					end
+
+--						-- Then we remove all the non-spaces characters until we hit a space.
+--					from until i = 0 or else l_text.item (i).is_space loop
+--						i := i - 1
+--					end
+
+--						-- Remove the text that we will not keep.
+--					if l_text.valid_index (i) and then l_text.item (i).is_space then
+--						Result := i + 1
+--					else
+--						Result := 1
+--					end
+--				end
+--			else
+--				Result := 0
+--			end
+--		end
+
+
+	displayed_text_range: TUPLE [left,right: INTEGER]
 		local
-			i: INTEGER
 			l_text: like text
+			p: like caret_position
+			p1,p2: INTEGER
+			len: INTEGER
 		do
 			l_text := text
-			i := word_begin_position (l_text, caret_position)
-			if i > 0 then
-				Result := l_text.substring (i, caret_position - 1)
+			if l_text.is_empty then
+				p1 := 1
+				p2 := 0
 			else
-				Result := ""
+				p := caret_position
+				len := l_text.count
+				p1 := p
+				if p <= 1 then
+					p1 := 1
+				elseif is_text_limit (l_text [p1 - 1]) then
+				else
+					from
+						p1 := p1 - 1
+					until
+						p1 < 2 or else is_text_limit (l_text [p1 - 1])
+					loop
+						p1 := p1 - 1
+					end
+				end
+
+				p2 := p
+				if p2 >= len then
+					p2 := len
+				elseif is_text_limit (l_text [p2]) then
+					p2 := (p2 - 1).max (p1)
+				else
+					from
+						p2 := p2 + 1
+					until
+						p2 > len or else is_text_limit (l_text[p2])
+					loop
+						p2 := p2 + 1
+					end
+					p2 := p2 - 1
+				end
 			end
+
+			Result := [p1, p2]
 		end
 
 	displayed_text: STRING_32
-		do
-			Result := expression_text
-		end
-
-	word_begin_position (a_text: like text; a_caret_position: INTEGER): INTEGER
+			-- Text which is currently displayed.
 		local
-			l_text: STRING_32
-			i: INTEGER
+			tu: like displayed_text_range
 		do
-			l_text := a_text
-				-- Translate the `a_caret_position' as an index in the string
-			i := a_caret_position - 1
-			if not l_text.is_empty and l_text.valid_index (i) then
-					-- First we skipp all spaces at the left of the `caret_position'.
-				if l_text.item (i).is_space then
-					Result := i + 1
-				else
-					from until i = 0 or else not l_text.item (i).is_space loop
-						i := i - 1
-					end
-
-						-- Then we remove all the non-spaces characters until we hit a space.
-					from until i = 0 or else l_text.item (i).is_space loop
-						i := i - 1
-					end
-
-						-- Remove the text that we will not keep.
-					if l_text.valid_index (i) and then l_text.item (i).is_space then
-						Result := i + 1
-					else
-						Result := 1
-					end
-				end
-			else
-				Result := 0
-			end
+			tu := displayed_text_range
+			Result := text.substring (tu.left, tu.right)
 		end
+
+feature -- Text change
 
 	set_displayed_text (a_text: READABLE_STRING_GENERAL)
+			-- Set `a_text' to `displayed_text'.
+		local
+			tu: like displayed_text_range
 		do
-		end
-
-feature {NONE} -- Implementation
-
-	select_all_text
-			-- Select all text.
-		do
-			select_all
-		end
-
-	move_caret_to (a_pos: INTEGER)
-			-- <Precursor>
-		do
-			set_caret_position (a_pos.max (1).min (text_length + 1))
+			print ("[" + a_text.out + "]%N")
+			tu := displayed_text_range
+			set_selection (tu.left, tu.right + 1)
+			delete_selection
+			insert_text (a_text)
 		end
 
 	move_caret_to_end
 			-- <Precursor>
 		do
-			set_caret_position (text_length + 1)
+			set_caret_position (displayed_text_range.right + 1)
 		end
 
-	delete_character_before
-			-- <Precursor>
-		do
-			if text_length > 0 and caret_position > 1 then
-				select_region (caret_position - 1, caret_position - 1)
-				delete_selection
-			end
-		end
+feature {NONE} -- Implementation
 
-	delete_character_after
+	select_all_text
 			-- <Precursor>
 		do
-			if text_length > 0 and caret_position <= text_length then
-				select_region (caret_position, caret_position)
-				delete_selection
-			end
+			select_all
 		end
 
 	delete_word_before
@@ -249,114 +321,6 @@ feature {NONE} -- Implementation
 			end
 		end
 
-
-	insert_suggestion (a_selected_item: attached like last_suggestion)
-			-- Insert `a_text' in Current if valid, move caret to the end and update last_suggestion.
-			-- (from EV_ABSTRACT_SUGGESTION_FIELD)
-			-- (export status {EV_SUGGESTION_WINDOW})
-		local
-			i: INTEGER
-			l_text: like text
-			l_old_caret_position: INTEGER
-		do
-			last_suggestion := a_selected_item
-			l_text := a_selected_item.displayed_text
-			if not l_text.is_empty and not l_text.has_code (('%R').natural_32_code) then
-				l_old_caret_position := caret_position
---				i := l_old_caret_position
-				i := word_begin_position (text, l_old_caret_position)
-				if i > 0 then
-					if i < l_old_caret_position then
-						set_selection (i, l_old_caret_position)
-						delete_selection
-						set_caret_position (text_length.min (i))
-					end
-					i := caret_position
-					insert_text (l_text)
-					set_caret_position (i + l_text.count)
-				else
-					set_text (l_text)
-					move_caret_to_end
-				end
-			end
-			refresh
-		end
-
-	insert_string (a_str: STRING_32)
-			-- Insert `a_str' at cursor position.
-		do
-			insert_text (a_str)
-			set_caret_position (caret_position + a_str.count)
-		end
-
-	insert_character (a_char: CHARACTER_32)
-			-- Insert `a_char' at cursor position.
-		do
-			insert_text (create {STRING_32}.make_filled (a_char, 1))
-			set_caret_position (caret_position + 1)
-		end
-
---	insert_string (a_str: STRING_32)
---			-- Insert `a_str' at cursor position.
---		local
---			i: INTEGER
---			l_text: like text
---		do
---			l_text := text
---			i := word_begin_position (l_text, caret_position)
---			if i > 0 then
---				l_text.replace_substring (a_str, i + 1, caret_position)
---				insert_text (l_text)
---				set_caret_position (i + 1 + a_str.count)
---			else
---				insert_text (a_str)
---				set_caret_position (caret_position + a_str.count)
---			end
---		end
-
---	insert_character (a_char: CHARACTER_32)
---			-- Insert `a_char' at cursor position.
---		local
---			i: INTEGER
---			l_text: like text
---		do
---			insert_string (a_char.as_string_32)
-----			l_text := text
-----			i := word_begin_position (l_text, caret_position)
-----			if i > 0 then
-----				l_text.insert_character (a_char, i: INTEGER_32)
-----				l_text.replace_substring (a_str, i + 1, caret_position)
-----				insert_text (l_text)
-----				set_caret_position (i + 1 + a_str.count)
-----			else
-----				insert_text (create {STRING_32}.make_filled (a_char, 1))
-----				set_caret_position (caret_position + 1)
-----			end
---		end
-
-	block_focus_in_actions
-			-- Block focus in actions.
-		do
-			focus_in_actions.block
-		end
-
-	resume_focus_in_actions
-			-- Resume focus in actions.
-		do
-			focus_in_actions.resume
-		end
-
-	block_focus_out_actions
-			-- Block focus out actions.
-		do
-			focus_out_actions.block
-		end
-
-	resume_focus_out_actions
-			-- Resume focus out actions.
-		do
-			focus_out_actions.resume
-		end
 
 note
 	copyright: "Copyright (c) 1984-2012, Eiffel Software and others"

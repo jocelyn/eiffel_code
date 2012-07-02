@@ -51,7 +51,7 @@ feature {NONE} -- Initialization
 
 			create l_settings.make
 			l_settings.set_matcher (create {CASE_INSENSITIVE_SUBSTRING_SUGGESTION_MATCHER})
-			create tf.make_with_settings (create {ITERABLE_SUGGESTION_PROVIDER [STRING_8]}.make (<<"Orange", "Pineapple", "Apple", "Banana", "Peach", "Pear", "Kiwi">>), l_settings)
+			create tf.make_with_settings (create {ITERABLE_SUGGESTION_PROVIDER [READABLE_STRING_8]}.make (available_fruits), l_settings)
 			tf.set_tooltip (lab.text)
 			tf_fruit := tf
 			vb.extend (tf)
@@ -69,7 +69,7 @@ feature {NONE} -- Initialization
 						Result := s.string
 						Result.left_adjust
 					end)
-			create tf_fruits.make_with_settings (create {ITERABLE_SUGGESTION_PROVIDER [STRING_8]}.make (<<"Orange", "Pineapple", "Apple", "Banana", "Peach", "Pear", "Kiwi">>), l_settings)
+			create tf_fruits.make_with_settings (create {ITERABLE_SUGGESTION_PROVIDER [READABLE_STRING_8]}.make (available_fruits), l_settings)
 
 			tf_fruits.set_is_text_limit_agent (agent (c: CHARACTER_32): BOOLEAN
 					do
@@ -100,12 +100,18 @@ feature {NONE} -- Initialization
 			l_settings.set_matcher (create {CASE_INSENSITIVE_SUBSTRING_SUGGESTION_MATCHER})
 			l_settings.set_suggestion_activator_characters (Void)
 --			l_settings.*set
-			create text.make_with_settings (create {ITERABLE_SUGGESTION_PROVIDER [STRING_8]}.make (<<"Orange", "Apple", "Banana", "Peach", "Pear", "Kiwi">>), l_settings)
+			create text.make_with_settings (create {ITERABLE_SUGGESTION_PROVIDER [READABLE_STRING_8]}.make (available_fruits), l_settings)
 			vb.extend (text)
 			text.set_text ("Soon .. inline suggesting typing demo")
+
 		end
 
-feature -- Status
+feature -- Access
+
+	available_fruits: ARRAY [READABLE_STRING_8]
+		do
+			Result := <<"Orange", "Pineapple", "Apple", "Banana", "Peach", "Pear", "Kiwi">>
+		end
 
 feature -- Change
 
