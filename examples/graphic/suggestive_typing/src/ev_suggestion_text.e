@@ -212,7 +212,6 @@ feature -- Text change
 		local
 			tu: like displayed_text_range
 		do
-			print ("[" + a_text.out + "]%N")
 			tu := displayed_text_range
 			set_selection (tu.left, tu.right + 1)
 			delete_selection

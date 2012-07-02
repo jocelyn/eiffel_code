@@ -110,7 +110,7 @@ feature -- Access
 
 	available_fruits: ARRAY [READABLE_STRING_8]
 		do
-			Result := <<"Orange", "Pineapple", "Apple", "Banana", "Peach", "Pear", "Kiwi">>
+			Result := <<"Orange", "Pineapple", "Apple", "Ananas", "Banana", "Peach", "Pear", "Kiwi", "Watermelon", "Lemon", "Lime", "Blueberry", "Blackberry", "Raspberry">>
 		end
 
 feature -- Change

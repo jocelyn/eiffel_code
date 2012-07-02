@@ -1,0 +1,202 @@
+Index: framework/vision2/suggestive_typing/ev_abstract_suggestion_field.e
+===================================================================
+--- framework/vision2/suggestive_typing/ev_abstract_suggestion_field.e	(revision 89065)
++++ framework/vision2/suggestive_typing/ev_abstract_suggestion_field.e	(working copy)
+@@ -193,6 +193,13 @@
+ 
+ feature -- Text operation
+ 
++	select_all_text
++			-- Select all text.
++		require
++			not_destroyed: not is_destroyed
++		deferred
++		end
++
+ 	delete_word_before
+ 			-- Delete one word before the `caret_position'.
+ 		require
+@@ -216,7 +223,7 @@
+ 		end
+ 
+ 	move_caret_to_end
+-			-- Move caret at the end.
++			-- Move caret at the end of displayed text.
+ 		require
+ 			not_destroyed: not is_destroyed
+ 		deferred
+@@ -370,24 +377,31 @@
+ 			-- Handle `a_key' and check against `settings.override_shortcut_trigger', if specified,
+ 			-- that `a_key' is a shortcut for triggering the suggestion. If not specified
+ 			-- we use `is_shortcut_for_suggestion' instead.
++		local
++			l_suggested: BOOLEAN
+ 		do
+ 			if not is_suggesting then
+ 				if attached settings.override_shortcut_trigger as l_agent then
+ 					if l_agent.item ([a_key, is_ctrl_pressed, is_alt_pressed, is_shift_pressed]) then
+ 						provide_suggestion
++						l_suggested := True
+ 					end
+ 				else
+ 					if is_shortcut_for_suggestion (a_key, is_ctrl_pressed, is_alt_pressed, is_shift_pressed) then
+ 						provide_suggestion
++						l_suggested := True
+ 					end
+ 				end
+-				if a_key.is_printable then
+-					reset_suggestion_timeout
+-				elseif is_ctrl_pressed then
++				if not l_suggested then
++					disable_suggestion_timeout
++				end
++				if is_ctrl_pressed then
+ 						-- If Backspace or Delete is pressed we perform
+ 						-- whatever the implementation decided. By default it is to
+ 						-- remove the word before or after `caret_position'.
+-					handle_deletion_keys (a_key)
++					handle_keys (a_key)
++				elseif not l_suggested and then a_key.is_printable then
++					reset_suggestion_timeout
+ 				end
+ 			elseif choices /= Void and then not choices.is_destroyed and then choices.is_displayed then
+ 				inspect
+@@ -456,7 +470,7 @@
+ 
+ 	on_key_string_pressed (character_string: STRING_32)
+ 			-- Process character `character_string', if it is part of
+-			-- `settings.suggestion_activator_acharacts' suggestion list is shown.
++			-- `settings.suggestion_activator_characters' suggestion list is shown.
+ 		local
+ 			c: CHARACTER_32
+ 		do
+@@ -464,6 +478,8 @@
+ 				if not is_suggesting then
+ 					if attached settings.suggestion_activator_characters as l_chars and then l_chars.has (character_string.item (1)) then
+ 						provide_suggestion
++					else
++--						disable_suggestion_timeout
+ 					end
+ 				elseif choices /= Void and then not choices.is_destroyed and then choices.is_displayed then
+ 					c := character_string.item (1)
+@@ -487,19 +503,32 @@
+ 			end
+ 		end
+ 
+-	handle_deletion_keys (a_key: EV_KEY)
++	handle_keys (a_key: EV_KEY)
+  			-- Process the push on Ctrl + an extended key.
+  		require
+ 			not_destroyed: not is_destroyed
+ 		do
+  			inspect
+  				a_key.code
++			when {EV_KEY_CONSTANTS}.key_a then
++				select_all_text
++			else
++				handle_deletion_keys (a_key)
++			end
++ 		end
++
++ 	handle_deletion_keys (a_key: EV_KEY)
++ 			-- Process the push on Ctrl + an extended key.
++ 		require
++			not_destroyed: not is_destroyed
++		do
++ 			inspect
++ 				a_key.code
+  			when {EV_KEY_CONSTANTS}.key_back_space then
+ 				delete_word_before
+ 
+ 			when {EV_KEY_CONSTANTS}.key_delete then
+ 				delete_word_after
+-
+ 			else
+ 			end
+  		end
+Index: framework/vision2/suggestive_typing/ev_suggestion_window.e
+===================================================================
+--- framework/vision2/suggestive_typing/ev_suggestion_window.e	(revision 89065)
++++ framework/vision2/suggestive_typing/ev_suggestion_window.e	(working copy)
+@@ -292,6 +292,7 @@
+ 				end
+ 				i := ix + l_offset
+ 				from
++					l_loop_end := l_grid.visible_row_count = 0
+ 				until
+ 					l_loop_end
+ 				loop
+@@ -464,11 +465,26 @@
+ 		local
+ 			l_grid: like grid
+ 			l_rows: ARRAYED_LIST [EV_GRID_ROW]
++			l_data: detachable like row_data_type
+ 		do
+ 			l_grid := grid
+ 			l_rows := l_grid.selected_rows
+-			if not l_rows.is_empty and then attached {like row_data_type} l_rows.first.data as l_data then
+-				field.insert_suggestion (l_data)
++			if not l_rows.is_empty then
++				across
++					l_rows as r
++				until
++					l_data /= Void
++				loop
++					if
++						r.item.is_displayed and then
++						attached {like row_data_type} r.item.data as d
++					then
++						l_data := d
++					end
++				end
++				if l_data /= Void then
++					field.insert_suggestion (l_data)
++				end
+ 			end
+ 			close
+ 		end
+Index: framework/vision2/suggestive_typing/ev_suggestion_text_field.e
+===================================================================
+--- framework/vision2/suggestive_typing/ev_suggestion_text_field.e	(revision 89065)
++++ framework/vision2/suggestive_typing/ev_suggestion_text_field.e	(working copy)
+@@ -18,9 +18,6 @@
+ 		end
+ 
+ 	EV_ABSTRACT_SUGGESTION_FIELD
+-		rename
+-			displayed_text as text,
+-			set_displayed_text as set_text
+ 		redefine
+ 			create_interface_objects
+ 		end
+@@ -95,8 +92,30 @@
+ 			default_handler_preserved: default_key_processing_handler = new_default_key_processing_handler
+ 		end
+ 
++feature -- Text access
++
++	displayed_text: STRING_32
++			-- <Precursor>
++		do
++			Result := text
++		end
++
++feature -- Text change
++
++	set_displayed_text (a_text: READABLE_STRING_GENERAL)
++			-- <Precursor>
++		do
++			set_text (a_text)
++		end
++
+ feature {NONE} -- Implementation
+ 
++	select_all_text
++			-- <Precursor>
++		do
++			select_all
++		end
++
+ 	move_caret_to_end
+ 			-- <Precursor>
+ 		do
