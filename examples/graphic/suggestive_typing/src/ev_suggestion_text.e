@@ -19,14 +19,13 @@ inherit
 
 	EV_ABSTRACT_SUGGESTION_FIELD
 		redefine
-			create_interface_objects
+			create_interface_objects,
+			is_default_key_processing_enabled
 		end
 
 create
 	make,
 	make_with_settings
-
-feature{NONE} -- Initialization
 
 feature {NONE} -- Initialization
 
@@ -317,6 +316,27 @@ feature {NONE} -- Implementation
 					-- Remove the text that we will not keep.
 				set_selection (caret_position, i)
 				delete_selection
+			end
+		end
+
+feature {EV_SUGGESTION_WINDOW} -- Interact with suggestion window.		
+
+	is_default_key_processing_enabled (a_key: EV_KEY): BOOLEAN
+			-- Will `a_key' be processed by underlying implementation.
+		do
+			if
+				is_suggesting and
+				(
+					a_key.code = {EV_KEY_CONSTANTS}.key_up or
+					a_key.code = {EV_KEY_CONSTANTS}.key_down or
+					a_key.code = {EV_KEY_CONSTANTS}.key_page_up or
+					a_key.code = {EV_KEY_CONSTANTS}.key_page_down
+--					or a_key.code = {EV_KEY_CONSTANTS}.key_enter
+				)
+			then
+				Result := False
+			else
+				Result := Precursor (a_key)
 			end
 		end
 
