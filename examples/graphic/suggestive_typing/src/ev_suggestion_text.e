@@ -330,7 +330,9 @@ feature {EV_SUGGESTION_WINDOW} -- Interact with suggestion window.
 					a_key.code = {EV_KEY_CONSTANTS}.key_up or
 					a_key.code = {EV_KEY_CONSTANTS}.key_down or
 					a_key.code = {EV_KEY_CONSTANTS}.key_page_up or
-					a_key.code = {EV_KEY_CONSTANTS}.key_page_down
+					a_key.code = {EV_KEY_CONSTANTS}.key_page_down or
+					a_key.code = {EV_KEY_CONSTANTS}.key_home or
+					a_key.code = {EV_KEY_CONSTANTS}.key_end
 --					or a_key.code = {EV_KEY_CONSTANTS}.key_enter
 				)
 			then
