@@ -71,9 +71,9 @@ feature {NONE} -- Initialization
 					end)
 			create tf_fruits.make_with_settings (create {ITERABLE_SUGGESTION_PROVIDER [READABLE_STRING_8]}.make (available_fruits), l_settings)
 
-			tf_fruits.set_is_text_limit_agent (agent (c: CHARACTER_32): BOOLEAN
+			tf_fruits.set_is_searched_text_separator_agent (agent (c: CHARACTER_32): BOOLEAN
 					do
-						Result := c = ','
+						Result := c.is_space or c = ','
 					end)
 			tf_fruits.set_tooltip (lab.text)
 			vb.extend (tf_fruits)
@@ -101,6 +101,10 @@ feature {NONE} -- Initialization
 			l_settings.set_suggestion_activator_characters (Void)
 --			l_settings.*set
 			create text.make_with_settings (create {ITERABLE_SUGGESTION_PROVIDER [READABLE_STRING_8]}.make (available_fruits), l_settings)
+			text.set_is_searched_text_separator_agent (agent (c: CHARACTER_32): BOOLEAN
+					do
+						Result := c.is_space or c = ','
+					end)
 			vb.extend (text)
 			text.set_text ("Soon .. inline suggesting typing demo")
 

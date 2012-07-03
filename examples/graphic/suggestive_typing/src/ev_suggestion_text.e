@@ -18,9 +18,22 @@ inherit
 		end
 
 	EV_ABSTRACT_SUGGESTION_FIELD
+		rename
+			displayed_text as text,
+			set_displayed_text as set_text
+		undefine
+			searched_text
 		redefine
 			create_interface_objects,
-			is_default_key_processing_enabled
+			is_default_key_processing_enabled,
+			insert_suggestion
+		end
+
+	EV_SUGGESTION_TEXTABLE_FIELD_BY_RANGE_HELPER
+		rename
+			displayed_text as text
+		undefine
+			default_create, copy
 		end
 
 create
@@ -93,137 +106,29 @@ feature -- Status setting
 			default_handler_preserved: default_key_processing_handler = new_default_key_processing_handler
 		end
 
-feature -- Text limit
+feature {EV_SUGGESTION_WINDOW} -- Interact with suggestion window.		
 
---	is_text_limit_agent: detachable FUNCTION [ANY, TUPLE [CHARACTER_32], BOOLEAN]
-
---	set_is_text_limit_agent (agt: like is_text_limit_agent)
---		do
---			is_text_limit_agent := agt
---		end
-
-	is_text_limit (c: CHARACTER_32): BOOLEAN
-		do
---			if attached is_text_limit_agent as agt then
---				Result := agt.item ([c])
---			else
-				Result := c.is_space
---			end
-		end
-
-feature -- Text access
---	word_begin_position (a_text: like text; a_caret_position: INTEGER): INTEGER
---		local
---			l_text: STRING_32
---			i: INTEGER
---		do
---			l_text := a_text
---				-- Translate the `a_caret_position' as an index in the string
---			i := a_caret_position - 1
---			if not l_text.is_empty and l_text.valid_index (i) then
---					-- First we skipp all spaces at the left of the `caret_position'.
---				if l_text.item (i).is_space then
---					Result := i + 1
---				else
---					from until i = 0 or else not l_text.item (i).is_space loop
---						i := i - 1
---					end
-
---						-- Then we remove all the non-spaces characters until we hit a space.
---					from until i = 0 or else l_text.item (i).is_space loop
---						i := i - 1
---					end
-
---						-- Remove the text that we will not keep.
---					if l_text.valid_index (i) and then l_text.item (i).is_space then
---						Result := i + 1
---					else
---						Result := 1
---					end
---				end
---			else
---				Result := 0
---			end
---		end
-
-
-	displayed_text_range: TUPLE [left,right: INTEGER]
+	insert_suggestion (a_selected_item: attached like last_suggestion)
+			-- Insert associated text of `a_selected_item' in Current if valid,
+			-- move caret to the end and update `last_suggestion' with `a_selected_item'.
 		local
-			l_text: like text
-			p: like caret_position
-			p1,p2: INTEGER
-			len: INTEGER
+			l_text: READABLE_STRING_GENERAL
 		do
-			l_text := text
-			if l_text.is_empty then
-				p1 := 1
-				p2 := 0
-			else
-				p := caret_position
-				len := l_text.count
-				p1 := p
-				if p <= 1 then
-					p1 := 1
-				elseif is_text_limit (l_text [p1 - 1]) then
-				else
-					from
-						p1 := p1 - 1
-					until
-						p1 < 2 or else is_text_limit (l_text [p1 - 1])
-					loop
-						p1 := p1 - 1
-					end
-				end
-
-				p2 := p
-				if p2 >= len then
-					p2 := len
-				elseif is_text_limit (l_text [p2]) then
-					p2 := (p2 - 1).max (p1)
-				else
-					from
-						p2 := p2 + 1
-					until
-						p2 > len or else is_text_limit (l_text[p2])
-					loop
-						p2 := p2 + 1
-					end
-					p2 := p2 - 1
-				end
+			last_suggestion := a_selected_item
+			l_text := a_selected_item.displayed_text
+			if not l_text.is_empty and not l_text.has_code (('%R').natural_32_code) then
+				insert_suggestion_text (l_text)
 			end
-
-			Result := [p1, p2]
+			refresh
 		end
 
-	displayed_text: STRING_32
-			-- Text which is currently displayed.
-		local
-			tu: like displayed_text_range
-		do
-			tu := displayed_text_range
-			Result := text.substring (tu.left, tu.right)
-		end
-
-feature -- Text change
-
-	set_displayed_text (a_text: READABLE_STRING_GENERAL)
-			-- Set `a_text' to `displayed_text'.
-		local
-			tu: like displayed_text_range
-		do
-			tu := displayed_text_range
-			set_selection (tu.left, tu.right + 1)
-			delete_selection
-			insert_text (a_text)
-		end
+feature {NONE} -- Implementation
 
 	move_caret_to_end
 			-- <Precursor>
 		do
-			set_caret_position (displayed_text_range.right + 1)
+			set_caret_position (text_length + 1)
 		end
-
-feature {NONE} -- Implementation
 
 	select_all_text
 			-- <Precursor>
@@ -333,12 +238,27 @@ feature {EV_SUGGESTION_WINDOW} -- Interact with suggestion window.
 					a_key.code = {EV_KEY_CONSTANTS}.key_page_down or
 					a_key.code = {EV_KEY_CONSTANTS}.key_home or
 					a_key.code = {EV_KEY_CONSTANTS}.key_end
---					or a_key.code = {EV_KEY_CONSTANTS}.key_enter
 				)
 			then
 				Result := False
+			elseif a_key.code = {EV_KEY_CONSTANTS}.key_enter then
+				Result := not is_suggesting
+				if is_suggesting then
+					ev_application.add_idle_action_kamikaze (agent delete_previous_new_line)
+				end
 			else
 				Result := Precursor (a_key)
+			end
+		end
+
+	delete_previous_new_line
+		local
+			l_text: like text
+		do
+			l_text := text
+			if l_text [caret_position - 1] = '%N' then
+				set_selection (caret_position - 1, caret_position)
+				delete_selection
 			end
 		end
 
